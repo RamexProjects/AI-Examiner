@@ -16,4 +16,5 @@ export interface QuizSettings {
   difficulty: Difficulty;
   type: QuestionType;
   mode: 'Standard' | 'Survival';
+  language: 'en' | 'am';
 }

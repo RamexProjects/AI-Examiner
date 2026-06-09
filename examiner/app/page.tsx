@@ -1,44 +1,50 @@
 'use client'
 
 import { useState } from 'react';
-import { generateQuiz } from './actions/generateQuiz'; 
+import { generateQuiz } from './actions/generateQuiz';
 import QuizConfig from '@/components/QuizConfig';
 import QuizGame from '@/components/QuizGame';
 import ValuationPage from '@/components/ValuationPage';
 import QuizSkeleton from '@/components/QuizSkeleton';
 import ResultSkeleton from '@/components/ResultSkeleton';
+import { useLanguage } from '@/context/LanguageContext';
+import { t } from '@/lib/translations';
 import { Question, QuizSettings } from '@/types';
 
-type ErrorType = 'OVERLOADED' | 'GENERIC' | null;
+type ErrorType = 'OVERLOADED' | 'GENERIC' | 'INVALID_RESPONSE' | null;
 type GameMode = 'Standard' | 'Survival';
 
 export default function Home() {
+  const { lang } = useLanguage();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGrading, setIsGrading] = useState(false);
-  const [gameFinished, setGameFinished] = useState(false); 
+  const [gameFinished, setGameFinished] = useState(false);
   const [errorType, setErrorType] = useState<ErrorType>(null);
-  
-  const [mode, setMode] = useState<GameMode>('Standard'); 
+
+  const [mode, setMode] = useState<GameMode>('Standard');
   const [difficulty, setDifficulty] = useState<string>('Easy');
 
   const handleStartQuiz = async (settings: QuizSettings) => {
     setIsGenerating(true);
     setErrorType(null);
-    setMode(settings.mode); 
-    setDifficulty(settings.difficulty); 
+    setMode(settings.mode);
+    setDifficulty(settings.mode === 'Survival' ? 'Hard' : settings.difficulty);
 
     try {
       const generatedQuestions = await generateQuiz(settings);
       setQuestions(generatedQuestions);
       setGameFinished(false);
       setUserAnswers({});
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Quiz Generation Failed:", err);
-      if (err.message.includes('OVERLOADED') || err.message.includes('503')) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('OVERLOADED') || msg.includes('503')) {
         setErrorType('OVERLOADED');
+      } else if (msg.includes('INVALID_RESPONSE')) {
+        setErrorType('INVALID_RESPONSE');
       } else {
         setErrorType('GENERIC');
       }
@@ -49,10 +55,10 @@ export default function Home() {
 
   const handleFinishQuiz = (answers: Record<number, string>) => {
     setUserAnswers(answers);
-    setIsGrading(true); 
+    setIsGrading(true);
     setTimeout(() => {
       setIsGrading(false);
-      setGameFinished(true); 
+      setGameFinished(true);
     }, 2000);
   };
 
@@ -62,7 +68,6 @@ export default function Home() {
     setGameFinished(false);
     setErrorType(null);
     setMode('Standard');
-    setDifficulty('Easy');
   };
 
   if (errorType) {
@@ -72,21 +77,27 @@ export default function Home() {
           {errorType === 'OVERLOADED' ? (
             <>
               <div className="text-6xl mb-4">🐢</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">AI is Overloaded</h2>
-              <p className="text-gray-600 mb-6">Too many people are generating quizzes right now.</p>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('aiOverloaded', lang)}</h2>
+              <p className="text-gray-600 mb-6">{t('aiOverloadedDesc', lang)}</p>
+            </>
+          ) : errorType === 'INVALID_RESPONSE' ? (
+            <>
+              <div className="text-6xl mb-4">🤖</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('somethingWentWrong', lang)}</h2>
+              <p className="text-gray-600 mb-6">{t('couldNotGenerate', lang)}</p>
             </>
           ) : (
             <>
               <div className="text-6xl mb-4">⚠️</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-              <p className="text-gray-600 mb-6">We couldn't generate the quiz.</p>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('somethingWentWrong', lang)}</h2>
+              <p className="text-gray-600 mb-6">{t('couldNotGenerate', lang)}</p>
             </>
           )}
-          <button 
-             onClick={() => setErrorType(null)} 
+          <button
+             onClick={() => setErrorType(null)}
              className="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition"
           >
-            Back
+            {t('back', lang)}
           </button>
         </div>
       </main>
